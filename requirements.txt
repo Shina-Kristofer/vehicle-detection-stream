@@ -3,4 +3,4 @@ torch
 ultralytics
 huggingface_hub
 pillow
-opencv-python
+opencv-python-headless
