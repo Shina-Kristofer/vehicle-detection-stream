@@ -55,7 +55,7 @@ def process_image(image):
         vehicle_details.append(f"{cls_name} ({confidence[0, pred].item()*100:.1f}%)")
         
     annotated_pil = Image.fromarray(result.plot()[..., ::-1])
-    stats_text = f"Total Vehicles: {len(detections)}
+    stats_text = f"Total Vehicles:" {len(detections)}
 " + "
 ".join([f"{k}: {v}" for k, v in class_counts.items() if v > 0])
     
