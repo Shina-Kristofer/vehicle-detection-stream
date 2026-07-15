@@ -18,7 +18,9 @@ st.set_page_config(
 
 # Device configuration
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-CLASSES = ['Car', 'Bus', 'Truck', 'Motorcycle']
+
+# Alphabetical order based on standard PyTorch DatasetFolder training
+CLASSES = ['Bus', 'Car', 'Motorcycle', 'Truck']
 
 # Load Models with Caching to ensure fast loading
 @st.cache_resource
@@ -75,10 +77,7 @@ with col_team2:
     st.success("""
     🎓 **Lead Developers**
     
-    * **Amna Iftikhar 1** 
-    * **Wajeeha Javed 2** 
-    * **Aliha Summan  3** 
-    """)
+    * **Amna Iftikhar 1** * **Wajeeha Javed 2** * **Aliha Summan  3** """)
 
 with col_team3:
     st.warning("""
@@ -137,26 +136,35 @@ with tab1:
                 # Loop through each detection to classify using ResNet18
                 for det in detections:
                     x1, y1, x2, y2, conf, class_id = det
-                    # Crop bounding box
-                    crop = image.crop((int(x1), int(y1), int(x2), int(y2)))
                     
-                    # ResNet18 Classification
+                    # Safe cropping boundaries
+                    x1, y1, x2, y2 = max(0, int(x1)), max(0, int(y1)), int(x2), int(y2)
+                    crop = image.crop((x1, y1, x2, y2))
+                    
+                    # ResNet18 Classification pipeline
                     with torch.no_grad():
-                        inputs = cls_transform(crop).unsqueeze(0).to(DEVICE)
-                        outputs = classification_model(inputs)
-                        probabilities = torch.softmax(outputs, dim=1)
-                        pred_idx = torch.argmax(probabilities, dim=1).item()
-                        cls_name = CLASSES[pred_idx]
-                        cls_conf = probabilities[0, pred_idx].item() * 100
+                        input_tensor = cls_transform(crop).unsqueeze(0).to(DEVICE)
+                        outputs = classification_model(input_tensor)
+                        pred_idx = torch.argmax(outputs, dim=1).item()
                         
-                    class_counts[cls_name] += 1
+                        # Validate index bounds safely
+                        if pred_idx < len(CLASSES):
+                            cls_name = CLASSES[pred_idx]
+                        else:
+                            cls_name = "Unknown"
+                            
+                        cls_conf = torch.softmax(outputs, dim=1)[0, pred_idx].item() * 100
+                    
+                    if cls_name in class_counts:
+                        class_counts[cls_name] += 1
+                        
                     vehicle_details.append({
                         "Detected Class": cls_name, 
                         "Classification Confidence": f"{cls_conf:.1f}%", 
-                        "Bounding Box (Coordinates)": f"[{int(x1)}, {int(y1)}, {int(x2)}, {int(y2)}]"
+                        "Bounding Box (Coordinates)": f"[{x1}, {y1}, {x2}, {y2}]"
                     })
                 
-                # Generate annotated image
+                # Generate annotated image from YOLO
                 annotated_img_np = result.plot()
                 annotated_img_rgb = annotated_img_np[..., ::-1] # Convert BGR to RGB
                 annotated_pil = Image.fromarray(annotated_img_rgb)
